@@ -1,0 +1,6 @@
+/build/
+/zaod-os-v1.iso
+/zaod-os-production.iso
+/keys/
+__pycache__/
+*.py[cod]

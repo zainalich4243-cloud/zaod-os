@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    start|restart|force-reload)
+        exec /usr/local/sbin/zaod-scale.sh
+        ;;
+    stop)
+        exit 0
+        ;;
+    status)
+        if [ -r /run/zaod-scale/mode ]; then
+            printf 'ZAOD scaling mode: %s\n' "$(cat /run/zaod-scale/mode)"
+        else
+            printf '%s\n' 'ZAOD scaling mode has not been selected'
+            exit 1
+        fi
+        ;;
+    *)
+        printf 'Usage: %s {start|stop|restart|status}\n' "$0" >&2
+        exit 2
+        ;;
+esac

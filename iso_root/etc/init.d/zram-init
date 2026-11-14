@@ -1,0 +1,118 @@
+#!/bin/sh
+set -eu
+
+RAM_LIMIT_KIB=3145728
+ZRAM_DEVICE=/dev/zram0
+ZRAM_SYSFS=/sys/block/zram0
+
+log()
+{
+    if command -v logger >/dev/null 2>&1; then
+        logger -t zram-init "$*"
+    else
+        printf '%s\n' "zram-init: $*" >&2
+    fi
+}
+
+fail()
+{
+    log "ERROR: $*"
+    exit 1
+}
+
+is_active()
+{
+    awk -v device="$ZRAM_DEVICE" '$1 == device { found = 1 } END { exit !found }' /proc/swaps
+}
+
+start_zram()
+{
+    [ "$(id -u)" -eq 0 ] || fail "must run as root"
+
+    ram_kib=$(awk '$1 == "MemTotal:" { print $2; exit }' /proc/meminfo)
+    case "$ram_kib" in
+        ''|*[!0-9]*) fail "could not read total RAM from /proc/meminfo" ;;
+    esac
+
+    if [ "$ram_kib" -gt "$RAM_LIMIT_KIB" ]; then
+        log "RAM exceeds 3 GiB; compressed swap is not enabled"
+        return 0
+    fi
+
+    if [ ! -d "$ZRAM_SYSFS" ]; then
+        modprobe zram num_devices=1 || fail "could not load the zram module"
+    fi
+    [ -d "$ZRAM_SYSFS" ] || fail "zram0 is unavailable after loading the module"
+    [ -b "$ZRAM_DEVICE" ] || fail "$ZRAM_DEVICE is missing; check device-node management"
+
+    if is_active; then
+        log "$ZRAM_DEVICE is already active"
+        return 0
+    fi
+
+    disksize=$(cat "$ZRAM_SYSFS/disksize")
+    if [ "$disksize" -eq 0 ]; then
+        algorithms=$(cat "$ZRAM_SYSFS/comp_algorithm")
+        case " $algorithms " in
+            *" lz4 "*|*" [lz4] "*)
+                algorithm=lz4
+                ;;
+            *" zstd "*|*" [zstd] "*)
+                algorithm=zstd
+                ;;
+            *)
+                fail "neither LZ4 nor ZSTD is supported by this zram device"
+                ;;
+        esac
+
+        # Use half of physical RAM as the virtual swap capacity.
+        size_bytes=$((ram_kib * 512))
+        printf '%s\n' "$algorithm" > "$ZRAM_SYSFS/comp_algorithm"
+        printf '%s\n' "$size_bytes" > "$ZRAM_SYSFS/disksize"
+        log "configured $ZRAM_DEVICE with $algorithm and $size_bytes bytes"
+    fi
+
+    mkswap -L zaod-zram "$ZRAM_DEVICE" >/dev/null ||
+        fail "could not format $ZRAM_DEVICE as swap"
+    swapon -p 100 "$ZRAM_DEVICE" ||
+        fail "could not enable swap on $ZRAM_DEVICE"
+    log "enabled high-priority compressed swap on $ZRAM_DEVICE"
+}
+
+stop_zram()
+{
+    [ "$(id -u)" -eq 0 ] || fail "must run as root"
+    [ -d "$ZRAM_SYSFS" ] || return 0
+
+    if is_active; then
+        swapoff "$ZRAM_DEVICE" || fail "could not disable swap on $ZRAM_DEVICE"
+    fi
+    if [ "$(cat "$ZRAM_SYSFS/disksize")" -ne 0 ]; then
+        printf '1\n' > "$ZRAM_SYSFS/reset" || fail "could not reset $ZRAM_DEVICE"
+    fi
+    log "$ZRAM_DEVICE stopped"
+}
+
+case "${1:-}" in
+    start)
+        start_zram
+        ;;
+    stop)
+        stop_zram
+        ;;
+    restart|force-reload)
+        stop_zram
+        start_zram
+        ;;
+    status)
+        if is_active; then
+            printf '%s\n' "$ZRAM_DEVICE is active"
+        else
+            printf '%s\n' "$ZRAM_DEVICE is inactive"
+        fi
+        ;;
+    *)
+        printf 'Usage: %s {start|stop|restart|status}\n' "$0" >&2
+        exit 2
+        ;;
+esac
