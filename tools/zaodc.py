@@ -476,9 +476,10 @@ def build_project(args: argparse.Namespace) -> None:
 def reject_run(args: argparse.Namespace) -> None:
     del args
     raise ZaodcError(
-        "ZAOD app execution is unavailable: the kernel has no CPL3 transition, "
-        "user page tables, TSS, validated user pointers, or ELF loader. "
-        "Build and package validation are available; no host execution fallback is used."
+        "ZAOD app execution is unavailable: there is no user-facing package "
+        "installer or host runner. The kernel package gate is system-task-only "
+        "and requires a configured signed Z-Shield catalog. No host execution "
+        "fallback is used."
     )
 
 

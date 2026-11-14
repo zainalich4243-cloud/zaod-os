@@ -200,7 +200,7 @@ class ZaodcTests(unittest.TestCase):
             check=False,
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("no CPL3 transition", result.stderr)
+        self.assertIn("system-task-only", result.stderr)
 
 
 if __name__ == "__main__":

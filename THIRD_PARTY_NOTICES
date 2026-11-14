@@ -1,0 +1,12 @@
+ZAOD OS includes third-party components with their own license terms.
+Those terms take precedence over the repository license for the components
+listed below.
+
+Limine source, protocol headers, and boot binaries:
+  - tools/limine/LICENSE: BSD 2-Clause
+  - tools/limine-protocol/LICENSE: ISC
+
+Ed25519 verifier:
+  - kernel/crypto/ed25519.c is derived from TweetNaCl, which its source
+    header identifies as public domain.
+

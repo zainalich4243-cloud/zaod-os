@@ -152,6 +152,11 @@ and the system-only onboarding draw call. Compile project templates with
 access disabled and a signing-ready package directory, or a kernel-flat signed
 `.zaod` when given the matching Ed25519 private key. Use
 [docs/zaod-sdk.md](./docs/zaod-sdk.md) for the commands and current ABI.
+For a step-by-step app project, permission manifest, build, and signing
+walkthrough, see [the ZAOD App Developer Guide](./docs/zaod-app-developer-guide.md).
+Original ZAOD material is All Rights Reserved under [LICENSE](./LICENSE).
+Third-party components retain the licenses listed in
+[THIRD_PARTY_NOTICES](./THIRD_PARTY_NOTICES) and their vendored license files.
 
 [ZAOD Studio](./apps/zaod-studio/) is a lightweight host-side Tk editor with
 project templates, line numbers, basic C highlighting, build, and package
